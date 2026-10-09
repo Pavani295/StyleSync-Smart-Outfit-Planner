@@ -23,8 +23,8 @@ import './App.css';
 
 export function App() {
   const [activePage, setActivePage] = useState('home');
-  const [clothes, setClothes] = useState([]);
-  const [favourites, setFavourites] = useState([]);
+  const [clothes, setClothes] = useState(() => getAllClothes());
+  const [favourites, setFavourites] = useState(() => getFavourites());
   const [toasts, setToasts] = useState([]);
 
   // Modals state

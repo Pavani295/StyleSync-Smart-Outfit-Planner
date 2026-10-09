@@ -69,9 +69,9 @@ export const Home = ({
 
   // Sample Featured Look of the Day
   const featuredLookItems = [
-    allClothes.find(i => i.id === 'eth-001') || allClothes[0],
-    allClothes.find(i => i.id === 'foo-005') || allClothes[1],
-    allClothes.find(i => i.id === 'acc-005') || allClothes[2]
+    allClothes.find(i => i.id === 'w-eth-001') || allClothes.find(i => i.category === 'Traditional Indian Wear') || allClothes[0],
+    allClothes.find(i => i.id === 'w-foo-001') || allClothes.find(i => i.category === 'Footwear') || allClothes[1],
+    allClothes.find(i => i.id === 'w-acc-001') || allClothes.find(i => i.category === 'Accessories') || allClothes[2]
   ].filter(Boolean);
 
   const featuredOutfit = {
