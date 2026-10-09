@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Shirt, Layers, Heart, IndianRupee, BarChart3, Tag, Sparkles, Plus, Wand2 } from 'lucide-react';
+import { Shirt, Layers, Heart, IndianRupee, BarChart3, Tag, Sparkles, Plus, Wand2, Users } from 'lucide-react';
 
 const CATEGORY_COLORS = {
   'Tops': '#C5A880',
@@ -110,6 +110,21 @@ export const Dashboard = ({
         percentage: totalItems > 0 ? Math.round((count / totalItems) * 100) : 0
       }))
       .sort((a, b) => b.count - a.count);
+  }, [clothes, totalItems]);
+
+  // 6. Gender section distribution
+  const genderStats = useMemo(() => {
+    const counts = { Women: 0, Men: 0, Unisex: 0 };
+    clothes.forEach(item => {
+      const g = item.gender || 'Unisex';
+      if (counts[g] !== undefined) counts[g]++;
+      else counts.Unisex++;
+    });
+    return [
+      { name: "Women's Collection", count: counts.Women, percentage: totalItems > 0 ? Math.round((counts.Women / totalItems) * 100) : 0, color: '#C86D51' },
+      { name: "Men's Collection", count: counts.Men, percentage: totalItems > 0 ? Math.round((counts.Men / totalItems) * 100) : 0, color: '#4A6984' },
+      { name: 'Unisex Wear', count: counts.Unisex, percentage: totalItems > 0 ? Math.round((counts.Unisex / totalItems) * 100) : 0, color: '#D4AF37' }
+    ];
   }, [clothes, totalItems]);
 
   return (
@@ -249,6 +264,39 @@ export const Dashboard = ({
                   <div
                     className="progress-fill fill-occasion"
                     style={{ width: `${Math.max(occ.percentage, 4)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Gender / Wardrobe Section Distribution Chart */}
+        <div className="chart-card">
+          <div className="chart-card-header">
+            <div className="chart-header-title">
+              <Users size={20} className="chart-icon text-gold" />
+              <h3>Wardrobe Sections</h3>
+            </div>
+            <span className="chart-badge">Men, Women & Unisex</span>
+          </div>
+
+          <div className="category-bars-list">
+            {genderStats.map((gen) => (
+              <div key={gen.name} className="chart-bar-row">
+                <div className="bar-labels">
+                  <span className="bar-name">{gen.name}</span>
+                  <span className="bar-numbers">
+                    <strong>{gen.count} pieces</strong> ({gen.percentage}%)
+                  </span>
+                </div>
+                <div className="progress-track">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${Math.max(gen.percentage, 4)}%`,
+                      backgroundColor: gen.color
+                    }}
                   />
                 </div>
               </div>

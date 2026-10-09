@@ -1,8 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Wand2, Sparkles, CheckCircle2, Heart, RotateCcw, AlertCircle, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  Wand2,
+  Sparkles,
+  CheckCircle2,
+  Heart,
+  RotateCcw,
+  AlertCircle,
+  ShieldCheck,
+  RefreshCw,
+  PlusCircle,
+  Layers,
+  ArrowRight
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import ImageWithFallback from '../components/ImageWithFallback';
-import { generateOutfitRecommendations } from '../utils/outfitEngine';
+import SwapPieceModal from '../components/SwapPieceModal';
+import {
+  generateOutfitRecommendations,
+  swapOutfitPiece
+} from '../utils/outfitEngine';
+
+const GENDER_OPTIONS = [
+  { id: 'Women', label: "Women's Styling", icon: '👩' },
+  { id: 'Men', label: "Men's Styling", icon: '👨' },
+  { id: 'All', label: 'All / Unisex', icon: '✨' }
+];
 
 const OCCASIONS = [
   'College', 'Casual', 'Office', 'Interview', 'Party', 'Wedding',
@@ -33,43 +55,156 @@ export const OutfitPlanner = ({
   onSaveFavourite,
   prefilledCriteria
 }) => {
+  // Filter & Generation States
+  const [gender, setGender] = useState(prefilledCriteria?.gender || 'Women');
   const [occasion, setOccasion] = useState(prefilledCriteria?.occasion || 'Casual');
   const [preferredColour, setPreferredColour] = useState(prefilledCriteria?.colour || 'Any');
   const [season, setSeason] = useState(prefilledCriteria?.season || 'All-Season');
   const [style, setStyle] = useState(prefilledCriteria?.style || 'Any');
   const [categoryFocus, setCategoryFocus] = useState('Any');
-  
-  const [recommendations, setRecommendations] = useState(null);
+
+  // Recommendation State
+  const [displayedOutfits, setDisplayedOutfits] = useState([]);
+  const [seenSignatures, setSeenSignatures] = useState([]);
+  const [totalPoolCount, setTotalPoolCount] = useState(0);
+  const [hasMoreOutfits, setHasMoreOutfits] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [exhaustedNotice, setExhaustedNotice] = useState(null);
 
-  const handleGenerate = useCallback(() => {
+  // Garment Swapping Modal State
+  const [swapModalState, setSwapModalState] = useState({
+    isOpen: false,
+    outfitIndex: null,
+    slotIndex: null
+  });
+
+  const criteria = useMemo(() => ({
+    gender,
+    occasion,
+    preferredColour,
+    season,
+    style,
+    categoryFocus
+  }), [gender, occasion, preferredColour, season, style, categoryFocus]);
+
+  /**
+   * Primary recommendation generation: resets history for a fresh criteria setup
+   */
+  const handleGenerateFresh = useCallback(() => {
     setIsGenerating(true);
-    // Micro-delay for smooth styling animation
+    setExhaustedNotice(null);
+
     const timer = setTimeout(() => {
-      const result = generateOutfitRecommendations(allClothes, {
-        occasion,
-        preferredColour,
-        season,
-        style,
-        categoryFocus
-      });
-      setRecommendations(result);
+      const result = generateOutfitRecommendations(allClothes, criteria, 0, 3, []);
+      setDisplayedOutfits(result.outfits);
+      const newSigs = result.outfits.map(o => o.signature);
+      setSeenSignatures(newSigs);
+      setTotalPoolCount(result.totalInPool);
+      setHasMoreOutfits(result.hasMore);
       setIsGenerating(false);
       setHasGenerated(true);
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [allClothes, occasion, preferredColour, season, style, categoryFocus]);
+  }, [allClothes, criteria]);
 
-  // Initial recommendation generation on mount
+  // Generate on initial mount
   useEffect(() => {
-    const cleanup = handleGenerate();
+    const cleanup = handleGenerateFresh();
     return () => {
       if (cleanup) cleanup();
     };
-  }, [handleGenerate]);
+  }, [handleGenerateFresh]);
 
+  /**
+   * "Show More Outfits": Appends next batch of unseen combinations
+   */
+  const handleShowMore = () => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      const result = generateOutfitRecommendations(allClothes, criteria, 0, 3, seenSignatures);
+      
+      if (result.outfits.length > 0) {
+        setDisplayedOutfits(prev => [...prev, ...result.outfits]);
+        const addedSigs = result.outfits.map(o => o.signature);
+        setSeenSignatures(prev => [...prev, ...addedSigs]);
+        setHasMoreOutfits(result.hasMore);
+        setExhaustedNotice(null);
+      } else {
+        setHasMoreOutfits(false);
+        setExhaustedNotice(
+          `You have viewed all ${totalPoolCount} compatible outfit combinations for this setup.`
+        );
+      }
+      setIsGenerating(false);
+    }, 200);
+  };
+
+  /**
+   * "Refresh Recommendations": Replaces current view with next unseen combinations
+   */
+  const handleRefreshRecommendations = () => {
+    setIsGenerating(true);
+    setTimeout(() => {
+      const result = generateOutfitRecommendations(allClothes, criteria, 0, 3, seenSignatures);
+
+      if (result.outfits.length > 0) {
+        setDisplayedOutfits(result.outfits);
+        const addedSigs = result.outfits.map(o => o.signature);
+        setSeenSignatures(prev => [...prev, ...addedSigs]);
+        setHasMoreOutfits(result.hasMore);
+        setExhaustedNotice(null);
+      } else {
+        // All combinations were already seen: cycle back to start
+        const freshResult = generateOutfitRecommendations(allClothes, criteria, 0, 3, []);
+        setDisplayedOutfits(freshResult.outfits);
+        setSeenSignatures(freshResult.outfits.map(o => o.signature));
+        setHasMoreOutfits(freshResult.hasMore);
+        setExhaustedNotice('All unique looks viewed! Cycled back to top scoring recommendations.');
+      }
+      setIsGenerating(false);
+    }, 200);
+  };
+
+  /**
+   * Interactive Garment Swapping Handlers
+   */
+  const handleOpenSwapModal = (outfitIndex, slotIndex) => {
+    setSwapModalState({
+      isOpen: true,
+      outfitIndex,
+      slotIndex
+    });
+  };
+
+  const handleCloseSwapModal = () => {
+    setSwapModalState({
+      isOpen: false,
+      outfitIndex: null,
+      slotIndex: null
+    });
+  };
+
+  const handleApplyReplacement = (replacementItem) => {
+    const { outfitIndex, slotIndex } = swapModalState;
+    if (outfitIndex === null || slotIndex === null) return;
+
+    const targetOutfit = displayedOutfits[outfitIndex];
+    if (!targetOutfit) return;
+
+    const updatedOutfit = swapOutfitPiece(targetOutfit, slotIndex, replacementItem, criteria);
+
+    setDisplayedOutfits(prev => {
+      const copy = [...prev];
+      copy[outfitIndex] = updatedOutfit;
+      return copy;
+    });
+  };
+
+  /**
+   * Save favourite with confetti
+   */
   const handleSaveWithCelebration = (outfit) => {
     const res = onSaveFavourite(outfit);
     if (res && res.success) {
@@ -80,7 +215,7 @@ export const OutfitPlanner = ({
           origin: { y: 0.7 }
         });
       } catch {
-        // Safe fallback
+        // Fallback
       }
     }
   };
@@ -95,19 +230,38 @@ export const OutfitPlanner = ({
         </div>
         <h1 className="page-title">Smart Outfit Planner</h1>
         <p className="page-subtitle">
-          Configure your occasion, style vibe, and weather preferences. Our rule-based logic pairs 
-          complementary colors, matching silhouettes, and appropriate accessories from your wardrobe.
+          Intelligent wardrobe matching for Men, Women, and Unisex wear. Pairs silhouettes, 
+          harmonious colors, pattern balances, and appropriate dress codes with zero repeated looks.
         </p>
         <div className="rule-engine-notice">
           <ShieldCheck size={16} />
           <span>
-            <strong>Deterministic Styling:</strong> This system uses curated color theory rules, category exclusion logic, and occasion dress codes—not opaque AI models.
+            <strong>Deterministic Styling:</strong> Uses verified color theory, standalone garment rules (no bottoms forced on sarees or dresses), and occasion dress codes.
           </span>
         </div>
       </div>
 
-      {/* Interactive Controls Panel */}
+      {/* Interactive Controls Card */}
       <div className="planner-control-card">
+        {/* Gender Toggle Strip */}
+        <div className="planner-gender-section">
+          <span className="gender-section-label">Target Wardrobe Section:</span>
+          <div className="gender-toggle-buttons">
+            {GENDER_OPTIONS.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                className={`gender-toggle-btn ${gender === g.id ? 'active' : ''}`}
+                onClick={() => setGender(g.id)}
+              >
+                <span className="gender-icon">{g.icon}</span>
+                <span>{g.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Options Grid */}
         <div className="planner-options-grid">
           {/* 1. Occasion */}
           <div className="planner-field-group">
@@ -191,54 +345,86 @@ export const OutfitPlanner = ({
           </div>
         </div>
 
-        {/* Action Button Bar */}
+        {/* Submit & Filter Summary Bar */}
         <div className="planner-submit-bar">
           <div className="active-preferences-summary">
-            Targeting: <span className="pref-tag">{occasion}</span>
+            Section: <span className="pref-tag">{gender === 'Women' ? "Women's" : gender === 'Men' ? "Men's" : 'All / Unisex'}</span>
+            Occasion: <span className="pref-tag">{occasion}</span>
             {preferredColour !== 'Any' && <span className="pref-tag">{preferredColour}</span>}
             {season !== 'All-Season' && <span className="pref-tag">{season}</span>}
             {style !== 'Any' && <span className="pref-tag">{style}</span>}
           </div>
 
           <button
-            onClick={handleGenerate}
+            onClick={handleGenerateFresh}
             disabled={isGenerating}
             className="btn-primary btn-generate"
           >
             <Wand2 size={18} className={isGenerating ? 'spin-icon' : ''} />
-            <span>{isGenerating ? 'Analyzing Wardrobe Harmony...' : 'Generate Outfits'}</span>
+            <span>{isGenerating ? 'Analyzing Wardrobe Harmony...' : 'Find Matching Outfits'}</span>
           </button>
         </div>
       </div>
 
       {/* Outfits Showcase Section */}
       <div className="recommendations-container">
-        {isGenerating ? (
+        {isGenerating && displayedOutfits.length === 0 ? (
           <div className="generating-shimmer-state">
             <Wand2 size={40} className="pulse-icon text-gold" />
             <h3>Evaluating Garment Silhouettes & Color Harmonies...</h3>
-            <p>Cross-checking dress code appropriateness and color balance.</p>
+            <p>Cross-checking dress code appropriateness, footwear compatibility, and color balance.</p>
           </div>
-        ) : recommendations && recommendations.outfits.length > 0 ? (
+        ) : displayedOutfits.length > 0 ? (
           <div className="outfits-list">
+            {/* Header with Anti-Repetition Action Buttons */}
             <div className="recommendations-heading-row">
-              <h2>
-                Curated Suggestions for <span className="serif-highlight">{occasion}</span>
-              </h2>
-              <span className="outfits-count-badge">
-                {recommendations.outfits.length} Look{recommendations.outfits.length > 1 ? 's' : ''} Recommended
-              </span>
+              <div>
+                <h2>
+                  Curated Looks for <span className="serif-highlight">{occasion}</span>
+                </h2>
+                <p className="pool-info-text">
+                  Showing {displayedOutfits.length} of {totalPoolCount} compatible combination{totalPoolCount === 1 ? '' : 's'} in wardrobe
+                </p>
+              </div>
+
+              <div className="outfit-batch-actions">
+                <button
+                  type="button"
+                  onClick={handleRefreshRecommendations}
+                  disabled={isGenerating}
+                  className="btn-secondary btn-refresh-batch"
+                  title="Generate a new set of unseen compatible combinations"
+                >
+                  <RefreshCw size={15} className={isGenerating ? 'spin-icon' : ''} />
+                  <span>Refresh Recommendations</span>
+                </button>
+              </div>
             </div>
 
-            {recommendations.outfits.map((outfit, index) => (
+            {/* Exhausted or cycled notification banner */}
+            {exhaustedNotice && (
+              <div className="info-banner-notice">
+                <Sparkles size={16} />
+                <span>{exhaustedNotice}</span>
+              </div>
+            )}
+
+            {/* Render Outfit Cards */}
+            {displayedOutfits.map((outfit, index) => (
               <div key={outfit.id || index} className="outfit-recommendation-card">
-                {/* Outfit Header */}
+                {/* Outfit Header Bar */}
                 <div className="outfit-header-bar">
                   <div className="outfit-title-group">
-                    <span className="look-number">Look #{index + 1}</span>
+                    <div className="outfit-meta-topline">
+                      <span className="look-number">Look #{index + 1}</span>
+                      <span className="compatibility-score-pill">
+                        <Sparkles size={12} /> {outfit.compatibilityScore}% Match
+                      </span>
+                    </div>
                     <h3 className="outfit-title">{outfit.title}</h3>
                     <div className="outfit-type-tags">
                       <span className="badge badge-primary">{outfit.type}</span>
+                      <span className="badge badge-gender-tag">{outfit.gender}</span>
                       <span className="badge badge-outline">{outfit.occasion}</span>
                       {outfit.season && <span className="badge badge-season">{outfit.season}</span>}
                     </div>
@@ -260,7 +446,7 @@ export const OutfitPlanner = ({
                   </div>
                 </div>
 
-                {/* Outfit Items Grid */}
+                {/* Outfit Garment Items Grid with Interactive Swap */}
                 <div className="outfit-items-display-grid">
                   {outfit.items.map((item, itemIdx) => (
                     <div key={item.id || itemIdx} className="outfit-garment-card">
@@ -272,25 +458,42 @@ export const OutfitPlanner = ({
                           className="garment-media"
                         />
                         <span className="garment-role-badge">{item.subcategory}</span>
+                        {item.pattern && (
+                          <span className="garment-pattern-badge">{item.pattern}</span>
+                        )}
                       </div>
 
                       <div className="garment-info">
-                        <span className="garment-category">{item.category}</span>
+                        <div className="garment-cat-row">
+                          <span className="garment-category">{item.category}</span>
+                          <span className="garment-gender-sub">{item.gender}</span>
+                        </div>
                         <h4 className="garment-name">{item.name}</h4>
                         <div className="garment-meta-row">
                           <span className="garment-colour">{item.colour}</span>
                           <span className="garment-price">₹{Number(item.price || 0).toLocaleString()}</span>
                         </div>
+
+                        {/* Interactive Swap Button */}
+                        <button
+                          type="button"
+                          className="btn-swap-piece"
+                          onClick={() => handleOpenSwapModal(index, itemIdx)}
+                          title={`Swap this ${item.subcategory || item.category} with another compatible piece`}
+                        >
+                          <RefreshCw size={13} />
+                          <span>Swap Piece</span>
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Why This Match Works (Rule-Based Justification) */}
+                {/* Rule-Based Styling Justifications */}
                 <div className="outfit-reasoning-box">
                   <div className="reasoning-title-row">
                     <Sparkles size={16} className="text-gold" />
-                    <strong>Why This Combination Works:</strong>
+                    <strong>Styling Harmony & Dress Code Rationale:</strong>
                   </div>
                   <ul className="reasoning-list">
                     {outfit.reasons.map((reason, rIdx) => (
@@ -303,20 +506,44 @@ export const OutfitPlanner = ({
                 </div>
               </div>
             ))}
+
+            {/* Pagination Controls ("Show More Outfits") */}
+            <div className="planner-pagination-row">
+              {hasMoreOutfits ? (
+                <button
+                  type="button"
+                  onClick={handleShowMore}
+                  disabled={isGenerating}
+                  className="btn-primary btn-show-more"
+                >
+                  <PlusCircle size={17} />
+                  <span>Show More Outfits ({totalPoolCount - displayedOutfits.length} more)</span>
+                </button>
+              ) : (
+                <div className="exhausted-pool-banner">
+                  <CheckCircle2 size={18} className="text-emerald" />
+                  <span>
+                    All {totalPoolCount} compatible outfit combinations for this setup have been displayed.
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         ) : hasGenerated ? (
           <div className="no-outfit-match-card">
             <AlertCircle size={44} className="no-match-icon" />
-            <h3>No Suitable Combination Found</h3>
+            <h3>No Suitable Outfit Found</h3>
             <p>
-              We couldn't form a fully compatible outfit matching all of your specific filters 
+              We couldn't form a fully compatible outfit matching your criteria for{' '}
+              <strong>{gender === 'Women' ? "Women's" : gender === 'Men' ? "Men's" : 'All'}</strong> section{' '}
               ({occasion}, {preferredColour !== 'Any' ? `${preferredColour} colour` : ''}, {style !== 'Any' ? `${style} style` : ''}) with the clothes currently in your wardrobe.
             </p>
             <div className="no-match-hints">
-              <strong>Helpful Styling Tips:</strong>
+              <strong>Helpful Styling Recommendations:</strong>
               <ul>
-                <li>Try setting Preferred Colour to <em>"Any"</em> for broader palette matching.</li>
-                <li>Ensure you have both suitable bottoms and footwear for {occasion}.</li>
+                <li>Try setting Preferred Colour to <em>"Any"</em> for broader palette harmony.</li>
+                <li>Make sure you have both tops/dresses and appropriate footwear for {occasion}.</li>
+                <li>Switch to the <em>"All / Unisex"</em> section to view unisex garments.</li>
                 <li>Add custom clothing items to your wardrobe in the "My Wardrobe" section.</li>
               </ul>
             </div>
@@ -325,7 +552,7 @@ export const OutfitPlanner = ({
                 setPreferredColour('Any');
                 setStyle('Any');
                 setCategoryFocus('Any');
-                handleGenerate();
+                handleGenerateFresh();
               }}
               className="btn-primary"
             >
@@ -335,6 +562,19 @@ export const OutfitPlanner = ({
           </div>
         ) : null}
       </div>
+
+      {/* Garment Swapping Modal */}
+      {swapModalState.isOpen && swapModalState.outfitIndex !== null && (
+        <SwapPieceModal
+          isOpen={swapModalState.isOpen}
+          onClose={handleCloseSwapModal}
+          outfit={displayedOutfits[swapModalState.outfitIndex]}
+          slotIndex={swapModalState.slotIndex}
+          allClothes={allClothes}
+          criteria={criteria}
+          onSelectReplacement={handleApplyReplacement}
+        />
+      )}
     </div>
   );
 };

@@ -45,6 +45,13 @@ export const ClothingCard = ({
           <span>{item.category}</span>
         </div>
 
+        {/* Gender Badge */}
+        {item.gender && (
+          <div className="card-badge-gender" title={`Section: ${item.gender}`}>
+            <span>{item.gender}</span>
+          </div>
+        )}
+
         {/* Custom Item Badge if user created */}
         {item.isCustom && (
           <div className="card-badge-custom" title="User added custom piece">
@@ -92,6 +99,13 @@ export const ClothingCard = ({
             />
             <span>{item.colour}</span>
           </div>
+
+          {/* Pattern Tag */}
+          {item.pattern && (
+            <div className="meta-tag pattern-tag" title={`Pattern: ${item.pattern}`}>
+              <span>{item.pattern}</span>
+            </div>
+          )}
 
           {/* Occasion Tag */}
           <div className="meta-tag occasion-tag" title={`Occasion: ${item.occasion}`}>

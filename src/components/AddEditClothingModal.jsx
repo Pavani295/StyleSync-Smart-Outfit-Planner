@@ -42,6 +42,9 @@ const SAMPLE_IMAGE_PRESETS = [
   { label: 'Activewear', url: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=700&q=80' },
 ];
 
+const GENDERS = ['Women', 'Men', 'Unisex'];
+const PATTERNS = ['Solid', 'Floral', 'Striped', 'Plaid', 'Embroidered', 'Graphic', 'Textured'];
+
 export const AddEditClothingModal = ({
   itemToEdit,
   isOpen,
@@ -52,9 +55,11 @@ export const AddEditClothingModal = ({
 
   const [formData, setFormData] = useState({
     name: '',
+    gender: 'Women',
     category: 'Tops',
     subcategory: 'Shirts',
     colour: 'White',
+    pattern: 'Solid',
     occasion: 'Casual',
     style: 'Casual',
     season: 'All-Season',
@@ -70,9 +75,11 @@ export const AddEditClothingModal = ({
     if (itemToEdit) {
       setFormData({
         name: itemToEdit.name || '',
+        gender: itemToEdit.gender || 'Women',
         category: itemToEdit.category || 'Tops',
         subcategory: itemToEdit.subcategory || 'Shirts',
         colour: itemToEdit.colour || 'White',
+        pattern: itemToEdit.pattern || 'Solid',
         occasion: itemToEdit.occasion || 'Casual',
         style: itemToEdit.style || 'Casual',
         season: itemToEdit.season || 'All-Season',
@@ -83,9 +90,11 @@ export const AddEditClothingModal = ({
     } else {
       setFormData({
         name: '',
+        gender: 'Women',
         category: 'Tops',
         subcategory: 'Shirts',
         colour: 'White',
+        pattern: 'Solid',
         occasion: 'Casual',
         style: 'Casual',
         season: 'All-Season',
@@ -153,9 +162,11 @@ export const AddEditClothingModal = ({
       const payload = {
         ...(itemToEdit ? { id: itemToEdit.id } : {}),
         name: formData.name.trim(),
+        gender: formData.gender,
         category: formData.category,
         subcategory: formData.subcategory,
         colour: formData.colour,
+        pattern: formData.pattern,
         occasion: formData.occasion,
         style: formData.style,
         season: formData.season,
@@ -208,6 +219,35 @@ export const AddEditClothingModal = ({
                 {touched.name && errors.name && (
                   <span className="field-error"><AlertCircle size={13} /> {errors.name}</span>
                 )}
+              </div>
+
+              {/* Gender & Pattern */}
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label className="form-label">Wardrobe Section (Gender) *</label>
+                  <select
+                    className="form-select"
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  >
+                    {GENDERS.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Fabric Pattern *</label>
+                  <select
+                    className="form-select"
+                    value={formData.pattern}
+                    onChange={(e) => setFormData({ ...formData, pattern: e.target.value })}
+                  >
+                    {PATTERNS.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Category & Subcategory */}

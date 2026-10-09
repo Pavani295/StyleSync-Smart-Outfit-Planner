@@ -43,6 +43,7 @@ export const ClothingDetailsModal = ({
             <div className="details-badges-row">
               <span className="badge badge-primary">{item.category}</span>
               <span className="badge badge-outline">{item.subcategory}</span>
+              {item.gender && <span className="badge badge-gender">{item.gender}</span>}
               {item.isCustom && <span className="badge badge-custom"><Sparkles size={12} /> Custom</span>}
             </div>
 
@@ -57,8 +58,16 @@ export const ClothingDetailsModal = ({
 
             <div className="details-specs-grid">
               <div className="spec-card">
+                <span className="spec-label">Section</span>
+                <span className="spec-value">{item.gender || 'Unisex'}</span>
+              </div>
+              <div className="spec-card">
                 <span className="spec-label">Colour</span>
                 <span className="spec-value">{item.colour}</span>
+              </div>
+              <div className="spec-card">
+                <span className="spec-label">Pattern</span>
+                <span className="spec-value">{item.pattern || 'Solid'}</span>
               </div>
               <div className="spec-card">
                 <span className="spec-label">Occasion</span>

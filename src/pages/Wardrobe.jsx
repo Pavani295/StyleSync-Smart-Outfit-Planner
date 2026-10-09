@@ -60,6 +60,19 @@ const STYLES = [
 
 const SEASONS = ['All Seasons', 'Summer', 'Winter', 'Monsoon', 'Spring'];
 
+const GENDER_TABS = ['All Sections', "Women's", "Men's", 'Unisex'];
+
+const PATTERNS = [
+  'All Patterns',
+  'Solid',
+  'Floral',
+  'Striped',
+  'Plaid',
+  'Embroidered',
+  'Graphic',
+  'Textured'
+];
+
 export const Wardrobe = ({
   clothes = [],
   onAddNew,
@@ -69,8 +82,10 @@ export const Wardrobe = ({
   selectedCategoryFilter = 'All Categories',
   setSelectedCategoryFilter
 }) => {
+  const [selectedGenderTab, setSelectedGenderTab] = useState('All Sections');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedColour, setSelectedColour] = useState('All Colours');
+  const [selectedPattern, setSelectedPattern] = useState('All Patterns');
   const [selectedOccasion, setSelectedOccasion] = useState('All Occasions');
   const [selectedStyle, setSelectedStyle] = useState('All Styles');
   const [selectedSeason, setSelectedSeason] = useState('All Seasons');
@@ -80,20 +95,24 @@ export const Wardrobe = ({
   // Active filters count
   const activeFiltersCount = useMemo(() => {
     let count = 0;
+    if (selectedGenderTab !== 'All Sections') count++;
     if (selectedCategoryFilter !== 'All Categories') count++;
     if (selectedColour !== 'All Colours') count++;
+    if (selectedPattern !== 'All Patterns') count++;
     if (selectedOccasion !== 'All Occasions') count++;
     if (selectedStyle !== 'All Styles') count++;
     if (selectedSeason !== 'All Seasons') count++;
     if (sortByPrice !== 'default') count++;
     if (searchTerm.trim() !== '') count++;
     return count;
-  }, [selectedCategoryFilter, selectedColour, selectedOccasion, selectedStyle, selectedSeason, sortByPrice, searchTerm]);
+  }, [selectedGenderTab, selectedCategoryFilter, selectedColour, selectedPattern, selectedOccasion, selectedStyle, selectedSeason, sortByPrice, searchTerm]);
 
   const handleResetFilters = () => {
+    setSelectedGenderTab('All Sections');
     setSearchTerm('');
     if (setSelectedCategoryFilter) setSelectedCategoryFilter('All Categories');
     setSelectedColour('All Colours');
+    setSelectedPattern('All Patterns');
     setSelectedOccasion('All Occasions');
     setSelectedStyle('All Styles');
     setSelectedSeason('All Seasons');
@@ -103,6 +122,15 @@ export const Wardrobe = ({
   // Filtered and sorted clothes
   const filteredClothes = useMemo(() => {
     return clothes.filter((item) => {
+      // Gender Section filter
+      if (selectedGenderTab === "Women's") {
+        if (item.gender !== 'Women' && item.gender !== 'Unisex') return false;
+      } else if (selectedGenderTab === "Men's") {
+        if (item.gender !== 'Men' && item.gender !== 'Unisex') return false;
+      } else if (selectedGenderTab === 'Unisex') {
+        if (item.gender !== 'Unisex') return false;
+      }
+
       // Search filter
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
@@ -120,6 +148,11 @@ export const Wardrobe = ({
       // Colour filter
       if (selectedColour !== 'All Colours') {
         if (item.colour !== selectedColour) return false;
+      }
+
+      // Pattern filter
+      if (selectedPattern !== 'All Patterns') {
+        if (item.pattern !== selectedPattern) return false;
       }
 
       // Occasion filter
@@ -149,9 +182,11 @@ export const Wardrobe = ({
     });
   }, [
     clothes,
+    selectedGenderTab,
     searchTerm,
     selectedCategoryFilter,
     selectedColour,
+    selectedPattern,
     selectedOccasion,
     selectedStyle,
     selectedSeason,
@@ -180,6 +215,19 @@ export const Wardrobe = ({
 
       {/* Search and Category Filter Strip */}
       <div className="wardrobe-controls-card">
+        {/* Gender Section Switcher Tabs */}
+        <div className="gender-tabs-strip">
+          {GENDER_TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setSelectedGenderTab(tab)}
+              className={`gender-tab-btn ${selectedGenderTab === tab ? 'active' : ''}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
         <div className="search-filter-row">
           {/* Search bar */}
           <div className="search-input-wrapper">
@@ -259,6 +307,20 @@ export const Wardrobe = ({
                 >
                   {COLOURS.map(c => (
                     <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Fabric Pattern Filter */}
+              <div className="filter-select-group">
+                <label className="filter-label">Pattern</label>
+                <select
+                  value={selectedPattern}
+                  onChange={(e) => setSelectedPattern(e.target.value)}
+                  className="filter-select"
+                >
+                  {PATTERNS.map(p => (
+                    <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
               </div>

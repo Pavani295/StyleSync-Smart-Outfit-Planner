@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, Trash2, Wand2, Eye, CheckCircle2, X } from 'lucide-react';
+import { Heart, Trash2, Wand2, Eye, CheckCircle2, X, Sparkles } from 'lucide-react';
 import ImageWithFallback from '../components/ImageWithFallback';
 
 const formatDate = (dateString) => {
@@ -64,6 +64,12 @@ export const Favourites = ({
                 <div className="fav-badges">
                   <span className="badge badge-primary">{fav.occasion}</span>
                   <span className="badge badge-outline">{fav.type}</span>
+                  {fav.gender && <span className="badge badge-gender-tag">{fav.gender}</span>}
+                  {fav.compatibilityScore && (
+                    <span className="compatibility-score-pill">
+                      <Sparkles size={11} /> {fav.compatibilityScore}%
+                    </span>
+                  )}
                 </div>
               </div>
 
